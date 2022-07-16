@@ -37,12 +37,13 @@ class UserController {
 
     async createUser(req, res) {
         const {username, tron_token, role} = req.body
+        const date = new Date()
         const newUser = await db.query(`INSERT INTO users (tron_token, username, roleplay) values ($1, $2, $3) RETURNING *;`, [tron_token, username.toLowerCase(), role])
         if (role === 'creators') {
-            await db.query(`INSERT INTO creators (username, user_id) values ($1, $2) RETURNING *`, [username.toLowerCase(), newUser.rows[0].id])
+            await db.query(`INSERT INTO creators (username, user_id, creation_date) values ($1, $2, $3) RETURNING *`, [username.toLowerCase(), newUser.rows[0].id, date])
             res.status(200).json({message: 'Creator created!'})
         } else {
-            await db.query(`INSERT INTO backers (username, user_id) values ($1, $2) RETURNING *`, [username.toLowerCase(), newUser.rows[0].id])
+            await db.query(`INSERT INTO backers (username, user_id, creation_date) values ($1, $2, $3) RETURNING *`, [username.toLowerCase(), newUser.rows[0].id, date])
             res.status(200).json({message: 'Backer created!'})
         }
 
@@ -61,9 +62,20 @@ class UserController {
         res.status(200).json(users.rows)
     }
 
+    async getCreatorByName(req, res) {
+        const username = req.params.username
+        const users = await db.query(`SELECT * FROM users WHERE roleplay = 'creators' AND username LIKE '%${username.toLowerCase()}%'`)
+        const creator = await db.query(`SELECT * FROM creators WHERE username = $1`, [username.toLowerCase()])
+        res.status(200).json({
+            ...users.rows[0],
+            ...creator.rows[0]
+        })
+    }
+
     async editUser(req, res) {
         const { tron_token, person_name, twitter, google, facebook, discord } = req.body
         const user = await db.query(`SELECT * FROM users WHERE tron_token = $1`, [tron_token])
+        console.log(person_name)
         let table = 'backers'
         if (user.rows[0].roleplay === 'creators') {
             table = 'creators'
@@ -84,6 +96,20 @@ class UserController {
             table = 'creators'
         }
         await db.query(`UPDATE ${table} SET avatarlink = $1 WHERE user_id = $2`, [newName+'.jpg', user.rows[0].id])
+    }
+
+    async editCreatorBackgroundImage(req, res) {
+        const tron_token = req.params.tron_token
+        const file = req.files.file;
+        const filename = getImageName()
+        file.mv(`images/${filename+file.name.slice(file.name.lastIndexOf('.'))}`, (err) => {})
+        const user = await db.query(`SELECT * FROM users WHERE tron_token = $1`, [tron_token])
+        let table = 'backers'
+        if (user.rows[0].roleplay === 'creators') {
+            table = 'creators'
+        }
+        console.log(file.name.slice(file.name.lastIndexOf('.')))
+        await db.query(`UPDATE ${table} SET backgroundlink = $1 WHERE user_id = $2`, [filename+file.name.slice(file.name.lastIndexOf('.')), user.rows[0].id])
     }
 }
 

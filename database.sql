@@ -15,6 +15,8 @@ create TABLE creators(
     google VARCHAR(255) DEFAULT '',
     facebook VARCHAR(255) DEFAULT '',
     discord VARCHAR(255) DEFAULT '',
+    creation_date VARCHAR(255) DEFAULT '',
+    user_description VARCHAR(512) DEFAULT '',
     user_id INTEGER,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
@@ -28,6 +30,8 @@ create TABLE backers(
     google VARCHAR(255) DEFAULT '',
     facebook VARCHAR(255) DEFAULT '',
     discord VARCHAR(255) DEFAULT '',
+    creation_date VARCHAR(255) DEFAULT '',
+     user_description VARCHAR(512) DEFAULT '',
     user_id INTEGER,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
