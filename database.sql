@@ -23,6 +23,7 @@ create TABLE backers(
     id SERIAL PRIMARY KEY,
     username VARCHAR(255) DEFAULT '',
     person_name VARCHAR(255) DEFAULT '',
+    avatarLink VARCHAR(255) DEFAULT '',
     twitter VARCHAR(255) DEFAULT '',
     google VARCHAR(255) DEFAULT '',
     facebook VARCHAR(255) DEFAULT '',

@@ -1,16 +1,37 @@
 const db = require('../db')
 
 const fs = require('fs')
-const { default: getImageName } = require('../functions/getImageName')
+
+const getImageName = () => {
+    var result           = '';
+    var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var charactersLength = characters.length;
+    for ( var i = 0; i < 32; i++ ) {
+      result += characters.charAt(Math.floor(Math.random() * 
+        charactersLength));
+    }
+    return result
+}
+
 
 class UserController {
+    async checkUsername(req, res) {
+        const {username} = req.body
+        const user = await db.query('SELECT * FROM users WHERE username = $1', [username])
+        if (user.rows.length>0 && user.rows[0].username===username) {
+            res.status(200).json({error: true})
+        } else {
+            res.status(200).json({error: false})
+        }
+    }
+
     async checkUserExist(req, res) {
         const { tron_token } = req.body
         const user = await db.query('SELECT * FROM users WHERE tron_token = $1', [tron_token])
         if (user.rows && user.rows.length === 0) {
-            res.json({exist: false})
+            res.status(200).json({notExist: true})
         } else {
-            res.json(user.rows[0])
+            res.status(200).json(user.rows[0])
         }
     }
 
@@ -30,8 +51,8 @@ class UserController {
     async getUser(req, res) {
         const tron_token = req.params.tron_token
         const user = await db.query('SELECT * FROM users WHERE tron_token = $1', [tron_token])
-        const creator = await db.query(`SELECT * FROM creators WHERE user_id = $1`, [user.rows[0].id])
-        res.status(200).json(creator.rows[0])
+        const role = await db.query(`SELECT * FROM ${user.rows[0].roleplay} WHERE user_id = $1`, [user.rows[0].id])
+        res.status(200).json(role.rows[0])
     }
 
     async getUsersByName(req, res) {
@@ -48,25 +69,21 @@ class UserController {
             table = 'creators'
         }
         const editedUser = await db.query(`UPDATE ${table} SET person_name = $1, twitter = $2, google = $3, facebook = $4, discord = $5 WHERE user_id = $6 RETURNING *`, [person_name, twitter, google, facebook, discord, user.rows[0].id])
-        console.log(editedUser)
         res.json(editedUser)
     }
 
     async editUserImage(req,res) {
-        const file = req.files.file;
-        const filename = file.name
+        const { tron_token } = req.body
+        var data = req.body.data.replace(/^data:image\/\w+;base64,/, "");
+        var buf = Buffer.from(data, 'base64');
         const newName = getImageName()
+        fs.writeFileSync(`./images/${newName}.jpg`, buf, 'base64')
         const user = await db.query(`SELECT * FROM users WHERE tron_token = $1`, [tron_token])
         let table = 'backers'
         if (user.rows[0].roleplay === 'creators') {
             table = 'creators'
         }
-        // const editedUser = await db.query(`UPDATE ${table} SET person_name = $1, twitter = $2, google = $3, facebook = $4, discord = $5 WHERE user_id = $6 RETURNING *`, [person_name, twitter, google, facebook, discord, user.rows[0].id])
-        // console.log(editedUser)
-        // res.json(editedUser)
-        fs.rename(filename, newName+filename.slice(filename.lastIndexOf('.')), () => {
-            //const editedUser = await db.query(`UPDATE ${table} SET person_name = $1, twitter = $2, google = $3, facebook = $4, discord = $5 WHERE user_id = $6 RETURNING *`, [person_name, twitter, google, facebook, discord, user.rows[0].id])
-        })
+        await db.query(`UPDATE ${table} SET avatarlink = $1 WHERE user_id = $2`, [newName+'.jpg', user.rows[0].id])
     }
 }
 

@@ -10,9 +10,10 @@ const cors = require('cors')
 app.use(cors())
 app.use(fileupload())
 app.use(express.json())
+app.use(express.static(__dirname + '/images'))
 app.use('/api/user', userRouter)
 app.use('/api/badge/', badgeRouter)
-app.use(express.static(__dirname + '/images'))
+
 
 async function start() {
 	try {
