@@ -13,7 +13,6 @@ const getImageName = () => {
     return result
 }
 
-
 class UserController {
     async checkUsername(req, res) {
         const {username} = req.body
@@ -46,20 +45,24 @@ class UserController {
             await db.query(`INSERT INTO backers (username, user_id, creation_date) values ($1, $2, $3) RETURNING *`, [username.toLowerCase(), newUser.rows[0].id, date])
             res.status(200).json({message: 'Backer created!'})
         }
-
     }
 
     async getUser(req, res) {
         const tron_token = req.params.tron_token
         const user = await db.query('SELECT * FROM users WHERE tron_token = $1', [tron_token])
         const role = await db.query(`SELECT * FROM ${user.rows[0].roleplay} WHERE user_id = $1`, [user.rows[0].id])
-        res.status(200).json(role.rows[0])
+        res.status(200).json({...role.rows[0], ...user.rows[0]})
     }
 
     async getUsersByName(req, res) {
         const username = req.params.username
-        const users = await db.query(`SELECT * FROM users WHERE roleplay = 'creators' AND username LIKE '%${username.toLowerCase()}%'`)
-        res.status(200).json(users.rows)
+        if (username === 'all') {
+            const users = await db.query(`SELECT * FROM creators`)
+            res.status(200).json(users.rows)
+        } else {
+            const users = await db.query(`SELECT * FROM creators WHERE username LIKE '%${username.toLowerCase()}%'`)
+            res.status(200).json(users.rows)
+        }
     }
 
     async getCreatorByName(req, res) {
@@ -110,6 +113,34 @@ class UserController {
         }
         console.log(file.name.slice(file.name.lastIndexOf('.')))
         await db.query(`UPDATE ${table} SET backgroundlink = $1 WHERE user_id = $2`, [filename+file.name.slice(file.name.lastIndexOf('.')), user.rows[0].id])
+    }
+
+    async editCreatorDescription(req, res) {
+        const { tron_token, description } = req.body
+        const user = await db.query(`SELECT * FROM users WHERE tron_token = $1`, [tron_token])
+        const editedCreator = await db.query('UPDATE creators SET user_description = $1 WHERE user_id = $2 RETURNING *', [description, user.rows[0].id])
+        if (editedCreator.rows[0].user_id === user.rows[0].id) {
+            res.status(200).json({message: 'success'})
+        }
+    }
+
+    async getPersonInfoSupporters(req, res) {
+        const username = req.params.username
+        const user = await db.query(`SELECT * FROM users WHERE username = $1`, [username])
+        const supporters = await db.query(`SELECT * FROM supporters WHERE creator_id = $1 ORDER BY sum_donations DESC`, [user.rows[0].id])
+        const lastdonations = await db.query(`SELECT * FROM donations WHERE creator_id = $1`, [user.rows[0].id])
+        console.log(lastdonations)
+        res.json({data: {
+            supporters: supporters.rows.slice(0,5),
+            donations: lastdonations.rows
+        }})
+    }
+
+    async getPersonInfoNFT(req, res) {
+        const username = req.params.username
+        const user = await db.query(`SELECT * FROM users WHERE username = $1`, [username])
+        const nfts = await db.query(`SELECT * FROM nft WHERE creator_id = $1`, [user.rows[0].id])
+        res.json({data: nfts.rows})
     }
 }
 
