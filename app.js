@@ -1,6 +1,7 @@
 const express = require('express')
 const app = express()
-const fileupload = require("express-fileupload");
+const fileupload = require("express-fileupload")
+path = require('path')
 
 const userRouter = require('./routes/user.routes')
 const badgeRouter = require('./routes/badge.routes')
@@ -13,6 +14,7 @@ app.use(cors())
 app.use(fileupload())
 app.use(express.json())
 app.use(express.static(__dirname + '/images'))
+app.use(express.static(path.resolve(__dirname, '../client/build')))
 app.use('/api/user/', userRouter)
 app.use('/api/badge/', badgeRouter)
 app.use('/api/donation/', donationRouter)

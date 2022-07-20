@@ -4,12 +4,14 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "start": "cross-env NODE_ENV=production node app.js",
+    "start": "node app.js",
     "server": "nodemon app.js",
     "client": "npm run start --prefix client",
     "client:install": "npm install --prefix client",
     "client:build": "npm run build --prefix client",
-    "dev": "concurrently \"npm run server\" \"npm run client\""
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "start:react": "parcel serve client/index.html --open --dist-dir client/build",
+    "build": "parcel build client/index.html --dist-dir client/build"
   },
   "author": "Nikita <iessenti@gmail.com>",
   "license": "ISC",
@@ -27,5 +29,8 @@
     "nodemon": "^2.0.19",
     "pg": "^8.7.3",
     "tronweb": "^4.2.0"
+  },
+  "devDependencies": {
+    "parcel": "^2.0.0-rc.0"
   }
 }
