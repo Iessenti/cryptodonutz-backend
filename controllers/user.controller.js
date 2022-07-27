@@ -50,8 +50,12 @@ class UserController {
     async getUser(req, res) {
         const tron_token = req.params.tron_token
         const user = await db.query('SELECT * FROM users WHERE tron_token = $1', [tron_token])
-        const role = await db.query(`SELECT * FROM ${user.rows[0].roleplay} WHERE user_id = $1`, [user.rows[0].id])
-        res.status(200).json({...role.rows[0], ...user.rows[0]})
+        if (user.rows[0] && user.rows[0].id) {
+            const role = await db.query(`SELECT * FROM ${user.rows[0].roleplay} WHERE user_id = $1`, [user.rows[0].id])
+            res.status(200).json({...role.rows[0], ...user.rows[0]})
+        } else {
+            res.status(200).json({})
+        }
     }
 
     async getUsersByName(req, res) {
@@ -67,18 +71,29 @@ class UserController {
 
     async getCreatorByName(req, res) {
         const username = req.params.username
+        const id = req.params.id
         const users = await db.query(`SELECT * FROM users WHERE roleplay = 'creators' AND username LIKE '%${username.toLowerCase()}%'`)
         const creator = await db.query(`SELECT * FROM creators WHERE username = $1`, [username.toLowerCase()])
+        let following = false
+        if (id && creator.rows[0]) {
+            console.log(creator.rows[0].id + '    ' + id)
+            const follow = await db.query(`SELECT * FROM follows WHERE creator_id = $1 AND backer_id = $2`, [ creator.rows[0].id , id])
+            console.log(follow.rows)
+            following = (follow.rows && follow.rows[0] && (follow.rows[0].backer_id === id)) ? true : false
+            console.log(following)
+        }
+
         res.status(200).json({
             ...users.rows[0],
-            ...creator.rows[0]
+            ...creator.rows[0],
+            following: following,
         })
     }
 
     async editUser(req, res) {
         const { tron_token, person_name, twitter, google, facebook, discord } = req.body
         const user = await db.query(`SELECT * FROM users WHERE tron_token = $1`, [tron_token])
-        console.log(person_name)
+
         let table = 'backers'
         if (user.rows[0].roleplay === 'creators') {
             table = 'creators'
@@ -88,17 +103,16 @@ class UserController {
     }
 
     async editUserImage(req,res) {
-        const { tron_token } = req.body
-        var data = req.body.data.replace(/^data:image\/\w+;base64,/, "");
-        var buf = Buffer.from(data, 'base64');
-        const newName = getImageName()
-        fs.writeFileSync(`./images/${newName}.jpg`, buf, 'base64')
+        const tron_token = req.params.tron_token
+        const file = req.files.file;
+        const filename = getImageName()
+        file.mv(`images/${filename+file.name.slice(file.name.lastIndexOf('.'))}`, (err) => {})
         const user = await db.query(`SELECT * FROM users WHERE tron_token = $1`, [tron_token])
         let table = 'backers'
         if (user.rows[0].roleplay === 'creators') {
             table = 'creators'
         }
-        await db.query(`UPDATE ${table} SET avatarlink = $1 WHERE user_id = $2`, [newName+'.jpg', user.rows[0].id])
+        await db.query(`UPDATE ${table} SET avatarlink = $1 WHERE user_id = $2`, [filename+file.name.slice(file.name.lastIndexOf('.')), user.rows[0].id])
     }
 
     async editCreatorBackgroundImage(req, res) {
@@ -111,7 +125,6 @@ class UserController {
         if (user.rows[0].roleplay === 'creators') {
             table = 'creators'
         }
-        console.log(file.name.slice(file.name.lastIndexOf('.')))
         await db.query(`UPDATE ${table} SET backgroundlink = $1 WHERE user_id = $2`, [filename+file.name.slice(file.name.lastIndexOf('.')), user.rows[0].id])
     }
 
@@ -129,10 +142,9 @@ class UserController {
         const user = await db.query(`SELECT * FROM users WHERE username = $1`, [username])
         const supporters = await db.query(`SELECT * FROM supporters WHERE creator_id = $1 ORDER BY sum_donations DESC`, [user.rows[0].id])
         const lastdonations = await db.query(`SELECT * FROM donations WHERE creator_id = $1`, [user.rows[0].id])
-        console.log(lastdonations)
         res.json({data: {
             supporters: supporters.rows.slice(0,5),
-            donations: lastdonations.rows
+            donations: lastdonations.rows.reverse()
         }})
     }
 
@@ -142,6 +154,57 @@ class UserController {
         const nfts = await db.query(`SELECT * FROM nft WHERE creator_id = $1`, [user.rows[0].id])
         res.json({data: nfts.rows})
     }
+
+    async follow(req, res) {
+        const {creator_id, creator_username, backer_id, backer_username} = req.body
+        const follow = await db.query('INSERT INTO follows (creator_id, creator_username, backer_id, backer_username) values ($1, $2, $3, $4) RETURNING *', [creator_id, creator_username, backer_id, backer_username])
+        res.status(200).json(follow)
+    }
+
+    async getAllFollows(req, res) {
+        const username = req.params.username
+        const follows = await db.query('SELECT * FROM follows WHERE backer_username = $1', [username])
+        let data = []
+        let names = []
+        if (follows.rows.length > 0) {
+            names = follows.rows.map( (follow) => (follow.creator_username) )
+            const creators = await db.query('SELECT * FROM creators WHERE username = ANY ($1)', [[names]])
+            follows.rows.forEach( (follow) => {
+                creators.rows.forEach( (creator) => {
+                    if (follow.creator_username === creator.username) {
+                        data.push({
+                            ...creator,
+                            ...follow
+                        })
+                    }
+                })
+                
+            }) 
+        }
+        
+        res.status(200).json(data)
+    }
+
+    async getAllFollowers(req, res) {
+        const username = req.params.username
+        const data = await db.query('SELECT * FROM follows WHERE creator_username = $1', [username])
+        if (data && data.rows && data.rows.length > 0) {
+            res.status(200).json(data.rows)
+        } else {
+            res.status(200).json([])
+        }
+    }
+
+    async getAllTransactions(req, res) {
+        const username = req.params.username
+        const data = await db.query('SELECT * FROM donations WHERE username = $1', [username])
+        if (data && data.rows && data.rows.length > 0) {
+            res.status(200).json(data.rows)
+        } else {
+            res.status(200).json([])
+        }
+    }
+
 }
 
 module.exports = new UserController()

@@ -44,21 +44,23 @@ create TABLE supporters(
     creator_id INTEGER,
     amount_donations INTEGER,
     FOREIGN KEY (creator_id) REFERENCES users(id)
-)
+);
 
 create TABLE donations(
     id SERIAL PRIMARY KEY,
     username VARCHAR(255) DEFAULT '',
+    creator_username VARCHAR(255) DEFAULT '',
     donation_date VARCHAR(63) DEFAULT '',
     backer_id INTEGER,
     sum_donation VARCHAR(63) DEFAULT '',
     creator_id INTEGER,
     FOREIGN KEY (creator_id) REFERENCES users(id)
-)
+);
 
 create TABLE badges(
     id SERIAL PRIMARY KEY,
     owner_user_id INTEGER,
+    owner_username VARCHAR(255) DEFAULT '',
     contributor_user_id_list VARCHAR(2047) DEFAULT '',
     badge_name VARCHAR(255) DEFAULT '',
     badge_desc VARCHAR(1023) DEFAULT '',
@@ -68,12 +70,13 @@ create TABLE badges(
     owners_quantity INTEGER
 );
 
-create TABLE collections(
+create TABLE follows(
     id SERIAL PRIMARY KEY,
-    collection_name VARCHAR(255),
-    user_id INTEGER,
-    FOREIGN KEY (user_id) REFERENCES person(id)
-)
+    creator_username VARCHAR(255) DEFAULT '',
+    creator_id VARCHAR(255) DEFAULT '',
+    backer_id VARCHAR(255) DEFAULT '',
+    backer_username VARCHAR(255) DEFAULT ''
+);
 
 create TABLE nft(
     id SERIAL PRIMARY KEY,

@@ -17,7 +17,7 @@ class BadgeController {
         const { tron_token, badge_name, badge_desc, link, quantity } = req.body
         
         const creator = await db.query('SELECT * FROM users WHERE tron_token = $1', [tron_token])
-        const newBadge = await db.query(`INSERT INTO badges (owner_user_id, badge_name, badge_desc, link, quantity) values ($1, $2, $3, $4, $5) RETURNING *`, [creator.rows[0].id, badge_name, badge_desc, link, quantity])
+        const newBadge = await db.query(`INSERT INTO badges (owner_user_id, badge_name, badge_desc, link, quantity, owner_username) values ($1, $2, $3, $4, $5, $6) RETURNING *`, [creator.rows[0].id, badge_name, badge_desc, link, quantity, creator.rows[0].username])
         res.status(200).json({badge: newBadge.rows[0]})
     }
 
@@ -41,10 +41,10 @@ class BadgeController {
     }
 
     async getBadgesByBacker(req, res) {
-        const { tron_token } = req.params.tron_token
-        const user = await db.query('SELECT * FROM users WHERE tron_token = $1', [tron_token]) 
-        const badges = await db.query(`SELECT * FROM badges WHERE contributor_user_id_list LIKE ' %${user.rows[0]}% '`)
-        res.json(badges)
+        const user_id = req.params.user_id
+        console.log(user_id)
+        const badges = await db.query(`SELECT * FROM badges WHERE contributor_user_id_list LIKE '%${user_id}% '`)
+        res.status(200).json({badges: badges.rows})
     }
 
     async getBadgesByCreator(req, res) { 

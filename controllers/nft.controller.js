@@ -34,6 +34,12 @@ class NftController {
         const nfts = await db.query('SELECT * FROM nft WHERE creator_id = $1', [creator.rows[0].id])
         res.status(200).json({data: nfts.rows})
     }
+
+    async deleteNft(req, res) {
+        const { nft_id } = req.body
+        await db.query('DELETE FROM nft WHERE id = $1', [nft_id])
+        res.status(200).json({message: 'success'})
+    }
 }
 
 module.exports = new NftController()
