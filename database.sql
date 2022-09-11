@@ -61,7 +61,7 @@ create TABLE badges(
     id SERIAL PRIMARY KEY,
     owner_user_id INTEGER,
     owner_username VARCHAR(255) DEFAULT '',
-    contributor_user_id_list VARCHAR(2047) DEFAULT '',
+    contributor_user_id_list VARCHAR(2047) DEFAULT ' ',
     badge_name VARCHAR(255) DEFAULT '',
     badge_desc VARCHAR(1023) DEFAULT '',
     badge_image VARCHAR(255) DEFAULT '',
